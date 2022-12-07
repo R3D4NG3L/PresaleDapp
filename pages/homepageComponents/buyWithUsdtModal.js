@@ -102,6 +102,15 @@ const BuyWithUsdtModal = () =>
     setPresaleDataParsed(preSale);
   }
 
+  /* Constants */
+  const [tokens = 10000, setTokens] = useState();
+  const [usdt, setUsdt] = useState(0);
+  const [usdtInputBoxClassName, setUsdtInputBoxClassName] = useState();
+  const [usdtInputBoxError, setUsdtInputBoxError] = useState();
+  const [convertToUsdtButtonClass, setConvertToUsdtButtonClass] = useState();
+  const [convertToUsdtDisabled, setConvertToUsdtDisabled] = useState();
+  const [convertToUsdtInProcessText, setConvertToUsdtInProcessText] = useState();
+
   /* Presale Data */
   const [presaleDataParsed, setPresaleDataParsed] = useState(0);
   const { data: presaleData,
@@ -115,61 +124,6 @@ const BuyWithUsdtModal = () =>
       args: [process.env.NEXT_PUBLIC_PRESALE_ID],
       watch: true,
     });
-
-
-  /* Buy with USDT */
-  const [tokens = 10000, setTokens] = useState();
-  const [usdt, setUsdt] = useState(0);
-  const [usdtInputBoxClassName, setUsdtInputBoxClassName] = useState();
-  const [usdtInputBoxError, setUsdtInputBoxError] = useState();
-  const [convertToUsdtButtonClass, setConvertToUsdtButtonClass] = useState();
-  const [convertToUsdtDisabled, setConvertToUsdtDisabled] = useState();
-  const [convertToUsdtInProcessText, setConvertToUsdtInProcessText] = useState();
-  const { data: buyWithUsdtConfig,
-    error: buyWithUsdtPrepareError,
-    isError: buyWithUsdtIsPrepareError,
-    status: buyWithUsdtPrepareStatus } = usePrepareContractWrite({
-      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS.toString(),
-      abi: process.env.NEXT_PUBLIC_CONTRACT_ABI,
-      functionName: 'buyWithUSDT',
-      chainId: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID),
-      args: [process.env.NEXT_PUBLIC_PRESALE_ID, tokens],
-      enabled: useAccountIsConnected,
-    });
-  const {
-    data: buyWithUsdtData,
-    write: buyWithUsdt,
-    isLoading: isBuyWithUsdtLoading,
-    isSuccess: isBuyWithUsdtStarted,
-    isError: isBuyWithUsdtError,
-    error: buyWithUsdtError,
-  } = useContractWrite(buyWithUsdtConfig);
-  const {
-    isLoading: waitForTransactionIsLoading,
-    isSuccess: waitForTransactionIsSuccess
-  } = useWaitForTransaction({
-    hash: buyWithUsdtData?.hash,
-  });
-  useEffect(() =>
-  {
-    Log("---> isBuyWithUsdtLoading:" + isBuyWithUsdtLoading)
-    Log("---> isBuyWithUsdtStarted:" + isBuyWithUsdtStarted)
-    Log("---> isBuyWithUsdtError:" + isBuyWithUsdtError)
-    Log("---> buyWithUsdtError:" + buyWithUsdtError)
-  }, [isBuyWithUsdtLoading, 
-    isBuyWithUsdtStarted,
-    isBuyWithUsdtError,
-    buyWithUsdtError]);
-
-  function setTokensFromUsdt(usdtSet)
-  {
-    Log("Buy with USDT - Tokens: " + tokens + " - UsdtValue: " + usdtSet);
-    if (!presaleData)
-      return;
-    var presale = new Presale(presaleData);
-    var tokens = usdtSet / presale.price;
-    setTokens(tokens);
-  }
 
   /* --------- */
 
@@ -250,6 +204,55 @@ const BuyWithUsdtModal = () =>
   } = useWaitForTransaction({
     hash: usdtAllowanceData?.hash,
   });
+
+
+  /* Buy with USDT */
+  const { data: buyWithUsdtConfig,
+    error: buyWithUsdtPrepareError,
+    isError: buyWithUsdtIsPrepareError,
+    status: buyWithUsdtPrepareStatus } = usePrepareContractWrite({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS.toString(),
+      abi: process.env.NEXT_PUBLIC_CONTRACT_ABI,
+      functionName: 'buyWithUSDT',
+      chainId: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID),
+      args: [process.env.NEXT_PUBLIC_PRESALE_ID, tokens],
+      enabled: useAccountIsConnected && (accountAllowancePublic >= usdtAllowanceHelper),
+    });
+  const {
+    data: buyWithUsdtData,
+    write: buyWithUsdt,
+    isLoading: isBuyWithUsdtLoading,
+    isSuccess: isBuyWithUsdtStarted,
+    isError: isBuyWithUsdtError,
+    error: buyWithUsdtError,
+  } = useContractWrite(buyWithUsdtConfig);
+  const {
+    isLoading: waitForTransactionIsLoading,
+    isSuccess: waitForTransactionIsSuccess
+  } = useWaitForTransaction({
+    hash: buyWithUsdtData?.hash,
+  });
+  useEffect(() =>
+  {
+    Log("---> isBuyWithUsdtLoading:" + isBuyWithUsdtLoading)
+    Log("---> isBuyWithUsdtStarted:" + isBuyWithUsdtStarted)
+    Log("---> isBuyWithUsdtError:" + isBuyWithUsdtError)
+    Log("---> buyWithUsdtError:" + buyWithUsdtError)
+  }, [isBuyWithUsdtLoading,
+    isBuyWithUsdtStarted,
+    isBuyWithUsdtError,
+    buyWithUsdtError]);
+
+  function setTokensFromUsdt(usdtSet)
+  {
+    Log("Buy with USDT - Tokens: " + tokens + " - UsdtValue: " + usdtSet);
+    if (!presaleData)
+      return;
+    var presale = new Presale(presaleData);
+    var tokens = usdtSet / presale.price;
+    setTokens(tokens);
+  }
+
   useEffect(() =>
   {
     Log("---> waitForTransactionUsdtAllowanceIsSuccess:" + waitForTransactionUsdtAllowanceIsSuccess)
@@ -258,7 +261,7 @@ const BuyWithUsdtModal = () =>
     // Once allowance has been confirmed, buy tokens with USDT
     if (waitForTransactionUsdtAllowanceIsSuccess)
       buyWithUsdt?.()
-  }, [waitForTransactionUsdtAllowanceIsSuccess, 
+  }, [waitForTransactionUsdtAllowanceIsSuccess,
     waitForTransactionUsdtAllowanceIsError,
     waitForTransactionUsdtAllowanceError]);
 
@@ -335,13 +338,14 @@ const BuyWithUsdtModal = () =>
           </div>
         </>);
     }
-    else if (waitForTransactionIsSuccess) {
+    else if (waitForTransactionIsSuccess)
+    {
       Log("##### usdtAllowanceIsLoading -> " + usdtAllowanceIsLoading);
       setConvertToUsdtInProcessText(
         <>
           <div className="flex items-center justify-center mb-5">
-            <p class="mt-2 text-sm text-green-200"><span class="font-medium">Congratulations!</span> You're investment was successful. <br/>
-            <span class="font-medium">Welcome on board!</span></p>
+            <p class="mt-2 text-sm text-green-200"><span class="font-medium">Congratulations!</span> You're investment was successful. <br />
+              <span class="font-medium">Welcome on board!</span></p>
           </div>
         </>);
     }
@@ -350,9 +354,9 @@ const BuyWithUsdtModal = () =>
       Log("##### setConvertToUsdtInProcessText Empty");
       setConvertToUsdtInProcessText("");
     }
-  }, [waitForTransactionIsLoading, 
-    usdtAllowanceIsLoading, 
-    isBuyWithUsdtLoading, 
+  }, [waitForTransactionIsLoading,
+    usdtAllowanceIsLoading,
+    isBuyWithUsdtLoading,
     waitForTransactionUsdtAllowanceIsLoading,
     waitForTransactionIsSuccess]);
 
